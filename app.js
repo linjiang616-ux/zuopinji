@@ -1,4 +1,4 @@
-const STORAGE_KEY = "jianglin-portfolio-editor-data-v1";
+﻿const STORAGE_KEY = "jianglin-portfolio-editor-data-v1";
 const ORIGINAL_DATA = JSON.parse(JSON.stringify(window.PORTFOLIO_DATA));
 let data = loadPortfolioData();
 window.PORTFOLIO_DATA = data;
@@ -287,17 +287,13 @@ function init() {
 function initHeroCarousel() {
   if (!heroImage || !heroProductName || !heroProductEn) return;
 
-  Object.values(heroGroups).flat().forEach((slide) => {
-    const image = new Image();
-    image.src = slide.src;
-  });
-
   const getActiveSlides = () => heroGroups[activeHeroGroup] ?? heroGroups.all;
 
   const showSlide = (nextIndex) => {
     const slides = getActiveSlides();
     heroSlideIndex = nextIndex;
     const slide = slides[nextIndex];
+    preloadHeroSlide(slide);
     heroImage.classList.add("is-switching");
 
     window.setTimeout(() => {
@@ -307,6 +303,7 @@ function initHeroCarousel() {
       heroProductEn.textContent = slide.en;
       heroImage.classList.remove("is-switching");
       syncHeroNodeState();
+      scheduleHeroPreload(slides, nextIndex + 1);
     }, 180);
   };
 
@@ -321,6 +318,9 @@ function initHeroCarousel() {
 
   const activateGroup = (groupName) => {
     activeHeroGroup = heroGroups[groupName] ? groupName : "all";
+    const slides = getActiveSlides();
+    preloadHeroSlides(slides, 2);
+    scheduleHeroPreload(slides, 2);
     showSlide(0);
     startTimer();
   };
@@ -343,7 +343,49 @@ function initHeroCarousel() {
   }
 
   syncHeroNodeState();
+  preloadHeroSlides(getActiveSlides(), 2);
+  scheduleHeroPreload(getActiveSlides(), 2);
   startTimer();
+}
+
+const preloadedHeroSlides = new Set();
+
+function preloadHeroSlide(slide) {
+  if (!slide?.src || preloadedHeroSlides.has(slide.src)) return;
+  preloadedHeroSlides.add(slide.src);
+  const image = new Image();
+  image.decoding = "async";
+  image.src = slide.src;
+}
+
+function preloadHeroSlides(slides, limit = 2) {
+  slides.slice(0, limit).forEach(preloadHeroSlide);
+}
+
+function scheduleHeroPreload(slides, startIndex = 0) {
+  const queue = slides.slice(startIndex).filter((slide) => slide?.src && !preloadedHeroSlides.has(slide.src));
+  if (!queue.length) return;
+
+  const runBatch = (deadline) => {
+    let loaded = 0;
+    while (queue.length && loaded < 2 && (!deadline?.timeRemaining || deadline.timeRemaining() > 4)) {
+      preloadHeroSlide(queue.shift());
+      loaded += 1;
+    }
+
+    if (queue.length) scheduleIdle(runBatch);
+  };
+
+  scheduleIdle(runBatch);
+}
+
+function scheduleIdle(callback) {
+  if ("requestIdleCallback" in window) {
+    window.requestIdleCallback(callback, { timeout: 1800 });
+    return;
+  }
+
+  window.setTimeout(callback, 900);
 }
 
 function syncHeroNodeState() {
@@ -363,7 +405,7 @@ const marqueeLightboxImages = Array.from({ length: 9 }, (_, index) => {
 });
 
 function getMarqueeImageIndex(src) {
-  const match = src?.match(/marquee-dynamic\/(\d+)\.(?:webp)$/i);
+  const match = src?.match(/marquee-dynamic\/(\d+)\.webp$/i);
   if (!match) return -1;
   const index = Number(match[1]) - 1;
   return index >= 0 && index < marqueeLightboxImages.length ? index : -1;
@@ -510,7 +552,7 @@ function renderProjects() {
         return `
         <div class="project-card-stage" style="--card-index: ${index}">
           <article class="project-card ${project.featured ? "featured" : ""}" tabindex="0" role="button" data-project-id="${project.id}" aria-label="打开 ${project.title}">
-            <img class="project-card-visual" src="${cardVisual}" alt="${project.title}" loading="lazy" />
+            <img class="project-card-visual" src="${cardVisual}" alt="${project.title}" loading="lazy" decoding="async" />
             <div class="project-content">
               <span class="project-number">${String(index + 1).padStart(2, "0")}</span>
               <span class="card-meta">${project.type} / ${project.category}</span>
@@ -550,7 +592,7 @@ function createProjectDetail(project) {
 
   return `
     <section class="case-hero">
-      <img src="${project.cover}" alt="${project.title}" />
+      <img src="${project.cover}" alt="${project.title}" loading="lazy" decoding="async" />
       <div class="case-title">
         <span class="case-kicker">${project.type} / ${project.category}</span>
         <h2>${project.title}</h2>
@@ -631,7 +673,7 @@ function createGallerySection(project) {
           imageIndex += 1;
           return `
             <button type="button" data-lightbox-index="${currentIndex}" aria-label="查看 ${image.caption}">
-              <img src="${image.src}" alt="${image.caption}" loading="lazy" />
+              <img src="${image.src}" alt="${image.caption}" loading="lazy" decoding="async" />
               <span>${image.caption}</span>
             </button>
           `;

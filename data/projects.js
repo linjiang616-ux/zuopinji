@@ -1,4 +1,4 @@
-window.PORTFOLIO_DATA = {
+﻿window.PORTFOLIO_DATA = {
   "categories": [
     "全部",
     "电商设计",
@@ -60,7 +60,7 @@ window.PORTFOLIO_DATA = {
           "caption": "产品主图 7"
         },
         {
-          "src": "./assets/projects/fishing-split-rings/detail-desktop.webp",
+          "src": "./assets/projects/fishing-split-rings/detail-desktop-optimized.webp",
           "caption": "电脑端详情页"
         },
         {
@@ -113,7 +113,7 @@ window.PORTFOLIO_DATA = {
           "title": "详情页设计",
           "images": [
             {
-              "src": "./assets/projects/fishing-split-rings/detail-desktop.webp",
+              "src": "./assets/projects/fishing-split-rings/detail-desktop-optimized.webp",
               "caption": "电脑端详情页"
             },
             {
